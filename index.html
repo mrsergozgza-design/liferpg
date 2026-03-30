@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="LifeRPG">
+<meta name="theme-color" content="#1a1008">
+<title>LifeRPG — Твой квест-трекер</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet">
+<style>
+:root {
+  --gold: #c9a84c;
+  --gold-light: #e8c97a;
+  --gold-dark: #8b6914;
+  --gold-dim: rgba(201,168,76,0.15);
+  --bg: #0e0a04;
+  --bg2: #1a1008;
+  --bg3: #241608;
+  --parchment: #f5edd8;
+  --parchment-dark: #e2d0a8;
+  --ink: #2c1f0e;
+  --ink2: #5c3d1e;
+  --red: #8b2020;
+  --green: #2d5a27;
+  --blue: #1a3a6b;
+  --purple: #4a1a6b;
+  --xp: #e8a020;
+  --border: rgba(201,168,76,0.25);
+  --r: 6px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { min-height: 100%; background: var(--bg); color: var(--parchment); font-family: 'IM Fell English', Georgia, serif; font-size: 15px; line-height: 1.4; }
+.app { max-width: 540px; margin: 0 auto; padding: 12px 12px 80px; }
+
+/* SYNC STATUS */
+.sync-bar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 10px; margin-bottom: 8px;
+  background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r);
+  font-size: 11px; color: rgba(201,168,76,0.5); font-family: 'Cinzel', serif;
+}
+.sync-dot { width: 7px; height: 7px; border-radius: 50%; background: #555; flex-shrink: 0; transition: background 0.3s; }
+.sync-dot.online { background: #4caf50; }
+.sync-dot.syncing { background: var(--gold); animation: pulse 1s infinite; }
+.sync-dot.error { background: var(--red); }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+/* CHAR HEADER */
+.char-header { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r); padding: 14px 16px 12px; margin-bottom: 10px; }
+.char-top { display: flex; align-items: center; gap: 12px; }
+.avatar { width: 56px; height: 56px; border: 1.5px solid var(--gold); border-radius: 50%; background: var(--bg3); display: flex; align-items: center; justify-content: center; font-size: 24px; cursor: pointer; flex-shrink: 0; transition: border-color 0.2s; user-select: none; }
+.avatar:hover { border-color: var(--gold-light); }
+.char-info { flex: 1; min-width: 0; }
+.char-name { font-family: 'Cinzel', serif; font-size: 17px; font-weight: 700; color: var(--gold-light); cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.char-name:hover { color: #fff; }
+.char-class { font-size: 11px; color: rgba(201,168,76,0.55); font-style: italic; margin-bottom: 6px; }
+.xp-row { display: flex; align-items: center; gap: 8px; }
+.xp-bar { flex: 1; height: 9px; background: rgba(0,0,0,0.5); border-radius: 5px; border: 1px solid var(--gold-dark); overflow: hidden; }
+.xp-fill { height: 100%; background: linear-gradient(90deg, #6b4e0e, var(--gold-light)); border-radius: 5px; transition: width 0.6s cubic-bezier(.4,0,.2,1); }
+.xp-label { font-size: 10px; color: var(--gold); white-space: nowrap; font-family: 'Cinzel', serif; }
+.level-badge { background: var(--gold); color: var(--ink); width: 42px; height: 42px; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: 'Cinzel', serif; flex-shrink: 0; }
+.level-badge .lv { font-size: 8px; font-weight: 700; }
+.level-badge .num { font-size: 17px; font-weight: 700; line-height: 1; }
+.char-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+.stat { text-align: center; }
+.stat-val { font-family: 'Cinzel', serif; font-size: 16px; color: var(--gold-light); font-weight: 600; }
+.stat-name { font-size: 9px; color: rgba(201,168,76,0.5); text-transform: uppercase; letter-spacing: 0.3px; margin-top: 1px; }
+
+/* TABS */
+.tabs { display: flex; gap: 4px; margin-bottom: 10px; position: sticky; top: 0; z-index: 10; background: var(--bg); padding: 6px 0; }
+.tab-btn { flex: 1; padding: 9px 4px; background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r); color: rgba(201,168,76,0.6); font-family: 'Cinzel', serif; font-size: 10px; cursor: pointer; transition: all 0.15s; text-align: center; line-height: 1.2; }
+.tab-btn:hover { color: var(--gold); border-color: var(--gold-dark); }
+.tab-btn.active { background: var(--gold-dark); border-color: var(--gold); color: var(--gold-light); }
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+/* CARD */
+.card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r); padding: 14px; margin-bottom: 10px; }
+.sec-title { font-family: 'Cinzel', serif; font-size: 12px; font-weight: 600; color: var(--gold-dark); text-align: center; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+
+/* QUEST ITEMS */
+.quest-item { display: flex; align-items: flex-start; gap: 10px; padding: 9px 10px; background: var(--bg3); border: 1px solid rgba(201,168,76,0.12); border-radius: 5px; margin-bottom: 6px; transition: background 0.15s; }
+.quest-item:hover { background: rgba(36,22,8,0.95); }
+.q-check { width: 22px; height: 22px; border: 1.5px solid var(--gold-dark); border-radius: 4px; background: var(--bg); cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 13px; margin-top: 1px; transition: all 0.2s; user-select: none; }
+.q-check:hover { border-color: var(--gold); }
+.q-check.done { background: var(--green); border-color: var(--green); color: #fff; }
+.q-body { flex: 1; min-width: 0; }
+.q-title { font-size: 14px; color: var(--parchment); line-height: 1.3; }
+.q-title.done { text-decoration: line-through; color: #666; }
+.q-meta { display: flex; gap: 6px; margin-top: 4px; align-items: center; flex-wrap: wrap; }
+.tag { font-size: 9px; padding: 2px 6px; border-radius: 3px; font-family: 'Cinzel', serif; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; }
+.tw { background: rgba(26,58,107,0.4); color: #7aaaf0; border: 1px solid rgba(26,58,107,0.6); }
+.tp { background: rgba(74,26,107,0.4); color: #c47af0; border: 1px solid rgba(74,26,107,0.6); }
+.th2 { background: rgba(45,90,39,0.4); color: #8fd487; border: 1px solid rgba(45,90,39,0.6); }
+.tpr { background: rgba(107,58,0,0.4); color: #f0b47a; border: 1px solid rgba(107,58,0,0.6); }
+.xp-tag { font-size: 10px; color: var(--xp); font-family: 'Cinzel', serif; }
+.stars { font-size: 11px; color: var(--gold-dark); }
+.del-btn { width: 24px; height: 24px; border: none; background: transparent; cursor: pointer; color: #555; font-size: 14px; border-radius: 3px; display: flex; align-items: center; justify-content: center; transition: all 0.15s; flex-shrink: 0; }
+.del-btn:hover { background: rgba(139,32,32,0.3); color: #e06060; }
+
+/* ADD FORM */
+.add-btn { display: block; width: 100%; padding: 8px; background: transparent; border: 1px dashed var(--gold-dark); border-radius: 5px; color: var(--gold-dark); font-family: 'Cinzel', serif; font-size: 11px; cursor: pointer; transition: all 0.15s; text-align: center; margin-top: 6px; }
+.add-btn:hover { border-color: var(--gold); color: var(--gold); background: var(--gold-dim); }
+.add-form { background: rgba(0,0,0,0.3); border: 1px dashed var(--gold-dark); border-radius: 5px; padding: 10px; margin-top: 8px; display: none; }
+.inp { width: 100%; padding: 7px 10px; border: 1px solid rgba(201,168,76,0.2); border-radius: 4px; background: var(--bg); font-family: 'IM Fell English', serif; font-size: 13px; color: var(--parchment); margin-bottom: 7px; outline: none; transition: border-color 0.15s; }
+.inp:focus { border-color: var(--gold); }
+.inp::placeholder { color: #555; }
+select.inp { cursor: pointer; appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23c9a84c'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 28px; }
+select.inp option { background: #1a1008; }
+.row { display: flex; gap: 6px; }
+.row .inp { flex: 1; }
+.btn-row { display: flex; gap: 6px; justify-content: flex-end; margin-top: 2px; }
+.btn { padding: 7px 16px; border: 1px solid var(--gold-dark); border-radius: 4px; background: var(--gold-dark); color: var(--gold-light); font-family: 'Cinzel', serif; font-size: 11px; cursor: pointer; transition: all 0.15s; }
+.btn:hover { background: var(--gold); color: var(--ink); }
+.btn-ghost { background: transparent; color: #666; border-color: rgba(201,168,76,0.15); }
+.btn-ghost:hover { background: rgba(255,255,255,0.05); color: #999; }
+
+/* HABITS */
+.habits-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
+.habit-card { background: var(--bg3); border: 1px solid rgba(201,168,76,0.12); border-radius: 5px; padding: 12px 10px; text-align: center; cursor: pointer; transition: all 0.2s; user-select: none; }
+.habit-card:hover { border-color: var(--gold-dark); }
+.habit-card.done-today { background: rgba(45,90,39,0.2); border-color: var(--green); }
+.habit-card.done-today .h-name { color: #8fd487; }
+.h-icon { font-size: 26px; margin-bottom: 4px; }
+.h-name { font-size: 12px; color: var(--parchment); font-weight: 600; margin-bottom: 4px; }
+.h-streak { font-size: 11px; color: var(--xp); font-family: 'Cinzel', serif; }
+.h-dots { display: flex; justify-content: center; gap: 3px; margin-top: 5px; }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: #333; }
+.dot.f { background: var(--green); }
+.dot.t { border: 1.5px solid var(--gold); background: #333; }
+
+/* PROJECTS */
+.proj-card { background: var(--bg3); border: 1px solid rgba(201,168,76,0.12); border-radius: 5px; padding: 10px 12px; margin-bottom: 8px; }
+.proj-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.proj-name { flex: 1; font-size: 14px; font-weight: 600; color: var(--gold-light); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.prog-bar { height: 7px; background: #111; border-radius: 4px; overflow: hidden; margin-bottom: 3px; }
+.prog-fill { height: 100%; background: linear-gradient(90deg, #1a3a6b, #4a7fd4); border-radius: 4px; transition: width 0.4s ease; }
+.prog-label { font-size: 10px; color: #777; text-align: right; font-family: 'Cinzel', serif; margin-bottom: 6px; }
+.subtask { display: flex; align-items: center; gap: 7px; padding: 4px 0; font-size: 12px; color: #aaa; border-bottom: 1px solid rgba(255,255,255,0.04); }
+.subtask:last-child { border-bottom: none; }
+.sub-check { width: 16px; height: 16px; border: 1px solid var(--gold-dark); border-radius: 3px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 10px; flex-shrink: 0; transition: all 0.15s; background: var(--bg); user-select: none; }
+.sub-check.done { background: var(--green); border-color: var(--green); color: #fff; }
+.sub-text.done { text-decoration: line-through; color: #555; }
+
+/* ACHIEVEMENTS */
+.ach-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 7px; }
+.ach-card { background: var(--bg3); border: 1px solid rgba(201,168,76,0.12); border-radius: 5px; padding: 12px 8px; text-align: center; transition: all 0.2s; position: relative; overflow: hidden; }
+.ach-card.unlocked { background: rgba(139,105,20,0.15); border-color: var(--gold-dark); }
+.ach-card.locked { opacity: 0.35; filter: grayscale(0.8); }
+.ach-icon { font-size: 28px; margin-bottom: 5px; }
+.ach-name { font-size: 10px; font-family: 'Cinzel', serif; font-weight: 600; color: var(--gold-dark); }
+.ach-card.unlocked .ach-name { color: var(--gold); }
+.ach-desc { font-size: 9px; color: #666; margin-top: 2px; font-style: italic; }
+.new-badge { position: absolute; top: 4px; right: 4px; background: var(--red); color: white; font-size: 8px; padding: 1px 4px; border-radius: 2px; font-family: 'Cinzel', serif; }
+
+.empty { text-align: center; padding: 18px; color: #555; font-style: italic; font-size: 13px; }
+.div-rune { text-align: center; color: var(--gold-dark); font-size: 11px; opacity: 0.4; letter-spacing: 8px; margin: 8px 0; }
+
+/* TOAST */
+#toast { position: fixed; bottom: 70px; left: 50%; transform: translateX(-50%) translateY(90px); background: var(--bg3); border: 1px solid var(--gold); border-radius: 6px; padding: 10px 20px; color: var(--gold-light); font-family: 'Cinzel', serif; font-size: 12px; z-index: 9999; transition: transform 0.3s ease; pointer-events: none; white-space: nowrap; max-width: 90vw; text-align: center; box-shadow: 0 4px 24px rgba(0,0,0,0.6); }
+#toast.show { transform: translateX(-50%) translateY(0); }
+
+/* MODAL */
+.overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 100; align-items: center; justify-content: center; }
+.overlay.open { display: flex; }
+.modal { background: var(--bg2); border: 1px solid var(--gold); border-radius: var(--r); padding: 20px; width: 90%; max-width: 320px; }
+.modal h3 { font-family: 'Cinzel', serif; font-size: 15px; color: var(--gold); margin-bottom: 14px; }
+
+/* LEVEL UP */
+#level-splash { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 200; align-items: center; justify-content: center; flex-direction: column; }
+#level-splash.show { display: flex; animation: fadeIn 0.3s; }
+@keyframes fadeIn { from{opacity:0} to{opacity:1} }
+.splash-lvl { font-family: 'Cinzel', serif; font-size: 72px; font-weight: 700; color: var(--gold); line-height: 1; }
+.splash-text { font-family: 'Cinzel', serif; font-size: 22px; color: var(--gold-light); margin-top: 8px; }
+.splash-class { font-size: 16px; color: #aaa; margin-top: 4px; font-style: italic; }
+.splash-close { margin-top: 24px; padding: 10px 32px; background: var(--gold-dark); border: 1px solid var(--gold); border-radius: 5px; color: var(--gold-light); font-family: 'Cinzel', serif; font-size: 13px; cursor: pointer; }
+.splash-close:hover { background: var(--gold); color: var(--ink); }
+
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--gold-dark); border-radius: 2px; }
+.app { padding-bottom: max(80px, env(safe-area-inset-bottom, 80px)); }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Sync bar -->
+  <div class="sync-bar">
+    <div class="sync-dot" id="syncDot"></div>
+    <span id="syncLabel">Подключение...</span>
+  </div>
+
+  <!-- Character Header -->
+  <div class="char-header">
+    <div class="char-top">
+      <div class="avatar" onclick="openNameModal()">⚔️</div>
+      <div class="char-info">
+        <div class="char-name" id="heroName" onclick="openNameModal()">Герой</div>
+        <div class="char-class" id="heroClass">Новобранец · Искатель</div>
+        <div class="xp-row">
+          <div class="xp-bar"><div class="xp-fill" id="xpFill" style="width:0%"></div></div>
+          <div class="xp-label" id="xpLabel">0/100 XP</div>
+        </div>
+      </div>
+      <div class="level-badge"><span class="lv">LVL</span><span class="num" id="levelNum">1</span></div>
+    </div>
+    <div class="char-stats">
+      <div class="stat"><div class="stat-val" id="sQ">0</div><div class="stat-name">Квестов</div></div>
+      <div class="stat"><div class="stat-val" id="sS">0</div><div class="stat-name">Стрик</div></div>
+      <div class="stat"><div class="stat-val" id="sA">0</div><div class="stat-name">Ачивок</div></div>
+      <div class="stat"><div class="stat-val" id="sX">0</div><div class="stat-name">XP всего</div></div>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab-btn active" onclick="tab('quests',this)">⚔<br>Квесты</button>
+    <button class="tab-btn" onclick="tab('habits',this)">🔥<br>Ритуалы</button>
+    <button class="tab-btn" onclick="tab('projects',this)">🗺<br>Походы</button>
+    <button class="tab-btn" onclick="tab('ach',this)">🏆<br>Слава</button>
+  </div>
+
+  <!-- QUESTS -->
+  <div id="tab-quests" class="tab-panel active">
+    <div class="card">
+      <div class="sec-title">✦ Доска квестов ✦</div>
+      <div id="qList"></div>
+      <div class="empty" id="qEmpty" style="display:none">Нет активных квестов</div>
+      <div class="div-rune">· · ·</div>
+      <button class="add-btn" onclick="tog('qaForm')">+ Принять квест</button>
+      <div class="add-form" id="qaForm">
+        <input class="inp" type="text" id="qT" placeholder="Название задачи..." maxlength="80">
+        <div class="row">
+          <select class="inp" id="qC">
+            <option value="work">⚔ Работа</option>
+            <option value="personal">💫 Личное</option>
+            <option value="habit">🌱 Привычка</option>
+            <option value="project">🗺 Проект</option>
+          </select>
+          <select class="inp" id="qD">
+            <option value="easy">★ Лёгкий 10 XP</option>
+            <option value="medium" selected>★★ Обычный 25 XP</option>
+            <option value="hard">★★★ Сложный 50 XP</option>
+            <option value="epic">★★★★ Эпик 100 XP</option>
+          </select>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-ghost" onclick="tog('qaForm')">Отмена</button>
+          <button class="btn" onclick="addQuest()">Добавить</button>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="sec-title">✦ Выполненные ✦</div>
+      <div id="qDone"></div>
+      <div class="empty" id="qDoneEmpty">Пока нет выполненных</div>
+    </div>
+  </div>
+
+  <!-- HABITS -->
+  <div id="tab-habits" class="tab-panel">
+    <div class="card">
+      <div class="sec-title">✦ Ежедневные ритуалы ✦</div>
+      <div class="habits-grid" id="hGrid"></div>
+      <div class="empty" id="hEmpty" style="display:none">Добавь первый ритуал</div>
+      <div class="div-rune">· · ·</div>
+      <button class="add-btn" onclick="tog('haForm')">+ Добавить ритуал</button>
+      <div class="add-form" id="haForm">
+        <input class="inp" type="text" id="hT" placeholder="Название привычки..." maxlength="30">
+        <select class="inp" id="hI">
+          <option>📚 Чтение</option><option>🏃 Спорт</option><option>🧘 Медитация</option>
+          <option>💧 Вода</option><option>✍️ Письмо</option><option>🎯 Фокус</option>
+          <option>🌅 Подъём</option><option>🎨 Творчество</option><option>💻 Код</option>
+          <option>🗣 Языки</option><option>🥗 Питание</option><option>😴 Сон</option>
+        </select>
+        <div class="btn-row">
+          <button class="btn btn-ghost" onclick="tog('haForm')">Отмена</button>
+          <button class="btn" onclick="addHabit()">Добавить</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PROJECTS -->
+  <div id="tab-projects" class="tab-panel">
+    <div class="card">
+      <div class="sec-title">✦ Великие походы ✦</div>
+      <div id="pList"></div>
+      <div class="empty" id="pEmpty" style="display:none">Нет активных проектов</div>
+      <div class="div-rune">· · ·</div>
+      <button class="add-btn" onclick="tog('paForm')">+ Начать поход</button>
+      <div class="add-form" id="paForm">
+        <input class="inp" type="text" id="pN" placeholder="Название проекта..." maxlength="50">
+        <input class="inp" type="text" id="pS1" placeholder="Этап 1..." maxlength="50">
+        <input class="inp" type="text" id="pS2" placeholder="Этап 2..." maxlength="50">
+        <input class="inp" type="text" id="pS3" placeholder="Этап 3..." maxlength="50">
+        <input class="inp" type="text" id="pS4" placeholder="Этап 4 (необязательно)..." maxlength="50">
+        <div class="btn-row">
+          <button class="btn btn-ghost" onclick="tog('paForm')">Отмена</button>
+          <button class="btn" onclick="addProject()">Создать</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ACHIEVEMENTS -->
+  <div id="tab-ach" class="tab-panel">
+    <div class="card">
+      <div class="sec-title">✦ Книга Подвигов ✦</div>
+      <div class="ach-grid" id="achGrid"></div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<div id="level-splash">
+  <div class="splash-lvl" id="splashLvl">5</div>
+  <div class="splash-text">Новый уровень!</div>
+  <div class="splash-class" id="splashClass">Воин</div>
+  <button class="splash-close" onclick="closeSplash()">Продолжить</button>
+</div>
+
+<div class="overlay" id="nameOverlay">
+  <div class="modal">
+    <h3>⚔ Имя Героя</h3>
+    <input class="inp" type="text" id="nameInp" placeholder="Введи своё имя..." maxlength="30">
+    <div class="btn-row">
+      <button class="btn btn-ghost" onclick="closeNameModal()">Отмена</button>
+      <button class="btn" onclick="saveName()">Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<!-- Firebase -->
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getFirestore, doc, onSnapshot, setDoc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAXtRmNFNw_zDvadOC71W5ez0Hn_FAB3gs",
+  authDomain: "life-rpg-b5b63.firebaseapp.com",
+  projectId: "life-rpg-b5b63",
+  storageBucket: "life-rpg-b5b63.firebasestorage.app",
+  messagingSenderId: "443649547884",
+  appId: "1:443649547884:web:9f0a0ea9c682782f894249"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const DOC = doc(db, 'users', 'player1');
+
+// ══ STATE ══
+const XP_LEVELS = [0,100,250,450,700,1000,1400,1900,2500,3200,10000];
+const CLASSES   = ['Новобранец','Авантюрист','Странник','Рыцарь','Чемпион','Легенда','Герой Эпох','Избранный','Повелитель','Бог Данжей'];
+const DIFF_XP   = {easy:10,medium:25,hard:50,epic:100};
+const DIFF_ST   = {easy:'★',medium:'★★',hard:'★★★',epic:'★★★★'};
+const CAT_CLS   = {work:'tw',personal:'tp',habit:'th2',project:'tpr'};
+const CAT_LBL   = {work:'Работа',personal:'Личное',habit:'Привычка',project:'Проект'};
+
+const ACHS = [
+  {id:'q1',   icon:'🗡', name:'Первый шаг',    desc:'1 квест',       chk:s=>s.hero.questsDone>=1},
+  {id:'q5',   icon:'⚔️', name:'Боец',           desc:'5 квестов',     chk:s=>s.hero.questsDone>=5},
+  {id:'q25',  icon:'🛡', name:'Ветеран',        desc:'25 квестов',    chk:s=>s.hero.questsDone>=25},
+  {id:'q100', icon:'👑', name:'Легенда',        desc:'100 квестов',   chk:s=>s.hero.questsDone>=100},
+  {id:'epic', icon:'💎', name:'Эпичный',        desc:'Эпик квест',    chk:s=>s.quests.some(q=>q.done&&q.diff==='epic')},
+  {id:'h3',   icon:'🔥', name:'Пламя',          desc:'Стрик 3 дня',   chk:s=>s.habits.some(h=>h.streak>=3)},
+  {id:'h7',   icon:'🌟', name:'Неделя силы',    desc:'Стрик 7 дней',  chk:s=>s.habits.some(h=>h.streak>=7)},
+  {id:'h30',  icon:'💫', name:'Мастер ритуала', desc:'Стрик 30 дней', chk:s=>s.habits.some(h=>h.streak>=30)},
+  {id:'lv5',  icon:'⭐', name:'Воин',           desc:'Уровень 5',     chk:s=>s.hero.level>=5},
+  {id:'lv10', icon:'🌠', name:'Бог',            desc:'Уровень 10',    chk:s=>s.hero.level>=10},
+  {id:'proj', icon:'🏰', name:'Строитель',      desc:'Заверши проект',chk:s=>s.projects.some(p=>p.sub.length>0&&p.sub.every(t=>t.done))},
+  {id:'all4', icon:'🎭', name:'Универсал',      desc:'Все 4 типа',    chk:s=>['work','personal','habit','project'].every(c=>s.quests.some(q=>q.done&&q.cat===c))},
+];
+
+let S = { hero:{name:'Герой',xp:0,xpTotal:0,level:1,questsDone:0}, quests:[], habits:[], projects:[], achievements:[] };
+let saveTimer = null;
+let isRemoteUpdate = false;
+
+// ══ SYNC STATUS ══
+function setSyncStatus(status, label) {
+  const dot = document.getElementById('syncDot');
+  const lbl = document.getElementById('syncLabel');
+  dot.className = 'sync-dot ' + status;
+  lbl.textContent = label;
+}
+
+// ══ FIRESTORE ══
+async function saveToCloud() {
+  setSyncStatus('syncing', 'Сохранение...');
+  try {
+    await setDoc(DOC, JSON.parse(JSON.stringify(S)));
+    setSyncStatus('online', 'Синхронизировано ✓');
+  } catch(e) {
+    setSyncStatus('error', 'Ошибка синхронизации');
+  }
+}
+
+function scheduleSave() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveToCloud, 800);
+}
+
+// Real-time listener
+onSnapshot(DOC, (snap) => {
+  if (snap.exists()) {
+    const data = snap.data();
+    // Merge carefully — only update if data is different
+    const remote = JSON.stringify(data);
+    const local = JSON.stringify(S);
+    if (remote !== local) {
+      S = { ...S, ...data };
+      if (!S.achievements) S.achievements = [];
+      ACHS.forEach(def => { if (!S.achievements.find(a=>a.id===def.id)) S.achievements.push({id:def.id,u:false}); });
+      renderAll();
+    }
+    setSyncStatus('online', 'Синхронизировано ✓');
+  } else {
+    setSyncStatus('online', 'Новый игрок');
+  }
+}, (err) => {
+  setSyncStatus('error', 'Нет соединения');
+});
+
+// ══ XP / LEVEL ══
+function lvlOf(xp) { let l=1; for(let i=1;i<XP_LEVELS.length;i++){if(xp>=XP_LEVELS[i])l=i+1;else break;} return Math.min(l,10); }
+function addXP(n) {
+  const old=S.hero.level;
+  S.hero.xp+=n; S.hero.xpTotal+=n;
+  S.hero.level=lvlOf(S.hero.xp);
+  if(S.hero.level>old){
+    document.getElementById('splashLvl').textContent=S.hero.level;
+    document.getElementById('splashClass').textContent=CLASSES[S.hero.level-1];
+    document.getElementById('level-splash').classList.add('show');
+  }
+  renderHeader();
+}
+window.closeSplash = () => document.getElementById('level-splash').classList.remove('show');
+
+function renderHeader() {
+  const l=S.hero.level, xp=S.hero.xp;
+  const xMin=XP_LEVELS[l-1], xMax=XP_LEVELS[l];
+  const pct=l>=10?100:Math.round(((xp-xMin)/(xMax-xMin))*100);
+  document.getElementById('heroName').textContent=S.hero.name;
+  document.getElementById('heroClass').textContent=CLASSES[l-1]+' · '+(l<=2?'Искатель':l<=4?'Воин':l<=7?'Чемпион':'Мифический');
+  document.getElementById('levelNum').textContent=l;
+  document.getElementById('xpFill').style.width=pct+'%';
+  document.getElementById('xpLabel').textContent=l>=10?'MAX':xp+'/'+xMax+' XP';
+  const ms=S.habits.reduce((m,h)=>Math.max(m,h.streak||0),0);
+  document.getElementById('sQ').textContent=S.hero.questsDone;
+  document.getElementById('sS').textContent=ms;
+  document.getElementById('sA').textContent=S.achievements.filter(a=>a.u).length;
+  document.getElementById('sX').textContent=S.hero.xpTotal;
+}
+
+// ══ QUESTS ══
+function renderQuests() {
+  const active=S.quests.filter(q=>!q.done);
+  const done=S.quests.filter(q=>q.done);
+  const el=id('qList'), de=id('qDone');
+  el.innerHTML=''; de.innerHTML='';
+  id('qEmpty').style.display=active.length?'none':'block';
+  id('qDoneEmpty').style.display=done.length?'none':'block';
+  active.forEach(q=>el.appendChild(mkQ(q)));
+  done.slice(-6).reverse().forEach(q=>de.appendChild(mkQ(q)));
+}
+function mkQ(q) {
+  const d=ce('div'); d.className='quest-item';
+  d.innerHTML=`<div class="q-check${q.done?' done':''}" onclick="window.doneQ('${q.id}')">${q.done?'✓':''}</div><div class="q-body"><div class="q-title${q.done?' done':''}">${esc(q.title)}</div><div class="q-meta"><span class="tag ${CAT_CLS[q.cat]}">${CAT_LBL[q.cat]}</span><span class="xp-tag">+${DIFF_XP[q.diff]} XP</span><span class="stars">${DIFF_ST[q.diff]}</span></div></div>${!q.done?`<button class="del-btn" onclick="window.delQ('${q.id}')">✕</button>`:''}`;
+  return d;
+}
+window.doneQ = (id2) => { const q=S.quests.find(x=>x.id===id2); if(!q||q.done)return; q.done=true; q.doneAt=Date.now(); S.hero.questsDone++; addXP(DIFF_XP[q.diff]); checkAch(); renderQuests(); toast(`⚔️ Квест выполнен! +${DIFF_XP[q.diff]} XP`); scheduleSave(); };
+window.delQ = (id2) => { S.quests=S.quests.filter(x=>x.id!==id2); renderQuests(); scheduleSave(); };
+window.addQuest = () => {
+  const t=id('qT').value.trim(); if(!t)return;
+  S.quests.push({id:uid(),title:t,cat:id('qC').value,diff:id('qD').value,done:false,createdAt:Date.now()});
+  id('qT').value=''; tog('qaForm'); renderQuests(); scheduleSave();
+};
+
+// ══ HABITS ══
+function today(){ return new Date().toISOString().slice(0,10); }
+function renderHabits() {
+  const g=id('hGrid'); g.innerHTML='';
+  id('hEmpty').style.display=S.habits.length?'none':'block';
+  S.habits.forEach(h=>g.appendChild(mkH(h)));
+}
+function mkH(h) {
+  const td=today(), done=h.dd===td;
+  const d=ce('div'); d.className='habit-card'+(done?' done-today':'');
+  d.onclick=()=>window.tickH(h.id);
+  const dots=[]; const now=new Date();
+  for(let i=6;i>=0;i--){const dd=new Date(now);dd.setDate(dd.getDate()-i);const ds=dd.toISOString().slice(0,10);const f=h.hist&&h.hist.includes(ds);const isT=ds===td;dots.push(`<div class="dot${f?' f':''}${isT&&!f?' t':''}"></div>`);}
+  d.innerHTML=`<div class="h-icon">${h.icon}</div><div class="h-name">${esc(h.name)}</div><div class="h-streak">${done?'✓ ':''}🔥 ${h.streak} дн.</div><div class="h-dots">${dots.join('')}</div>`;
+  return d;
+}
+window.tickH = (id2) => {
+  const h=S.habits.find(x=>x.id===id2); if(!h)return;
+  const td=today(); if(h.dd===td)return;
+  if(!h.hist)h.hist=[];
+  const yd=new Date(); yd.setDate(yd.getDate()-1);
+  h.streak=(h.dd===yd.toISOString().slice(0,10)||h.streak===0)?h.streak+1:1;
+  h.dd=td; h.hist.push(td); if(h.hist.length>35)h.hist=h.hist.slice(-35);
+  addXP(5); checkAch(); renderHabits(); renderHeader();
+  toast(`${h.icon} Ритуал! +5 XP · Стрик: ${h.streak}`); scheduleSave();
+};
+window.addHabit = () => {
+  const t=id('hT').value.trim(); if(!t)return;
+  S.habits.push({id:uid(),name:t,icon:id('hI').value.split(' ')[0],streak:0,dd:'',hist:[]});
+  id('hT').value=''; tog('haForm'); renderHabits(); scheduleSave();
+};
+
+// ══ PROJECTS ══
+function renderProjects() {
+  const el=id('pList'); el.innerHTML='';
+  id('pEmpty').style.display=S.projects.length?'none':'block';
+  S.projects.forEach(p=>el.appendChild(mkP(p)));
+}
+function mkP(p) {
+  const tot=p.sub.length, dn=p.sub.filter(s=>s.done).length, pct=tot?Math.round((dn/tot)*100):0;
+  const d=ce('div'); d.className='proj-card';
+  const subs=p.sub.map(s=>`<div class="subtask"><div class="sub-check${s.done?' done':''}" onclick="window.tickSub('${p.id}','${s.id}')">${s.done?'✓':''}</div><span class="sub-text${s.done?' done':''}">${esc(s.title)}</span></div>`).join('');
+  d.innerHTML=`<div class="proj-head"><div class="proj-name">🗺 ${esc(p.name)}</div><button class="del-btn" onclick="window.delP('${p.id}')">✕</button></div><div class="prog-bar"><div class="prog-fill" style="width:${pct}%"></div></div><div class="prog-label">${dn}/${tot} · ${pct}%</div><div>${subs}</div>`;
+  return d;
+}
+window.tickSub = (pid,sid) => { const p=S.projects.find(x=>x.id===pid); const s=p&&p.sub.find(x=>x.id===sid); if(!s||s.done)return; s.done=true; addXP(15); checkAch(); renderProjects(); toast('✅ Этап выполнен! +15 XP'); scheduleSave(); };
+window.delP = (id2) => { S.projects=S.projects.filter(x=>x.id!==id2); renderProjects(); scheduleSave(); };
+window.addProject = () => {
+  const n=id('pN').value.trim(); if(!n)return;
+  const subs=['pS1','pS2','pS3','pS4'].map(x=>id(x).value.trim()).filter(Boolean).map(t=>({id:uid(),title:t,done:false}));
+  S.projects.push({id:uid(),name:n,sub:subs,createdAt:Date.now()});
+  ['pN','pS1','pS2','pS3','pS4'].forEach(x=>id(x).value='');
+  tog('paForm'); renderProjects(); scheduleSave();
+};
+
+// ══ ACHIEVEMENTS ══
+function checkAch() {
+  let newOne=false;
+  ACHS.forEach(def=>{ let a=S.achievements.find(x=>x.id===def.id); if(!a){a={id:def.id,u:false};S.achievements.push(a);} if(!a.u&&def.chk(S)){a.u=true;a.isNew=true;newOne=true;toast(`🏆 ${def.name}!`);} });
+  if(newOne)renderAch();
+  renderHeader();
+}
+function renderAch() {
+  const g=id('achGrid'); g.innerHTML='';
+  ACHS.forEach(def=>{ const a=S.achievements.find(x=>x.id===def.id)||{}; const d=ce('div'); d.className='ach-card '+(a.u?'unlocked':'locked'); d.innerHTML=`${a.isNew?'<div class="new-badge">NEW</div>':''}<div class="ach-icon">${def.icon}</div><div class="ach-name">${def.name}</div><div class="ach-desc">${def.desc}</div>`; g.appendChild(d); });
+}
+
+// ══ NAME MODAL ══
+window.openNameModal = () => { id('nameInp').value=S.hero.name; id('nameOverlay').classList.add('open'); setTimeout(()=>id('nameInp').focus(),60); };
+window.closeNameModal = () => id('nameOverlay').classList.remove('open');
+window.saveName = () => { const n=id('nameInp').value.trim(); if(n){S.hero.name=n;renderHeader();scheduleSave();} window.closeNameModal(); };
+
+// ══ TABS ══
+window.tab = (name,btn) => { document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active')); document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active')); id('tab-'+name).classList.add('active'); btn.classList.add('active'); };
+
+// ══ TOGGLE FORM ══
+window.tog = (formId) => { const f=id(formId); const open=f.style.display==='block'; f.style.display=open?'none':'block'; if(!open){const inp=f.querySelector('input');if(inp)inp.focus();} };
+
+// ══ TOAST ══
+let toastTmr;
+function toast(msg){ const t=id('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toastTmr); toastTmr=setTimeout(()=>t.classList.remove('show'),2600); }
+
+// ══ UTILS ══
+function id(x){return document.getElementById(x);}
+function ce(t){return document.createElement(t);}
+function uid(){return Math.random().toString(36).slice(2,10);}
+function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+function renderAll() { renderHeader(); renderQuests(); renderHabits(); renderProjects(); renderAch(); }
+
+// ══ KEYBOARD ══
+document.addEventListener('keydown',e=>{
+  if(e.key==='Enter'){ if(id('nameOverlay').classList.contains('open'))window.saveName(); if(id('qaForm').style.display==='block')window.addQuest(); if(id('haForm').style.display==='block')window.addHabit(); if(id('paForm').style.display==='block')window.addProject(); }
+  if(e.key==='Escape'){window.closeNameModal();window.closeSplash();}
+});
+id('nameOverlay').addEventListener('click',e=>{if(e.target===id('nameOverlay'))window.closeNameModal();});
+
+// ══ INIT ══
+setSyncStatus('syncing', 'Подключение...');
+if(!S.achievements)S.achievements=[];
+ACHS.forEach(def=>{if(!S.achievements.find(a=>a.id===def.id))S.achievements.push({id:def.id,u:false});});
+renderAll();
+</script>
+</body>
+</html>
